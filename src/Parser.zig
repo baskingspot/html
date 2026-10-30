@@ -84,6 +84,7 @@ const Scope = enum { default, list_item, button, table };
 const CharClass = enum { whitespace, null, other };
 
 const TagToken = struct {
+    /// Always `Tag.fromName(name)`: a rule that renames the token updates both.
     tag: Tag,
     name: []const u8,
     attributes: []Attribute,
@@ -146,10 +147,10 @@ pub fn init(gpa: Allocator, options: Options) Allocator.Error!Parser {
 pub fn initFragment(gpa: Allocator, context: Context, options: Options) Allocator.Error!Parser {
     var p = try initRoot(gpa, options, .fragment);
     errdefer p.deinit();
-    const root = try p.createElement(.html, "html", &.{});
+    const root = try p.createElement(.html, "html", .html, &.{});
     try p.open.append(gpa, root);
     p.fragment_root = root;
-    p.context = try p.createElement(context.namespace, context.name, context.attributes);
+    p.context = try p.createElement(context.namespace, context.name, .fromName(context.name), context.attributes);
     const ctx = p.el(p.context);
     if (ctx.namespace == .html) {
         switch (ctx.tag) {
@@ -508,7 +509,7 @@ fn beforeHtml(self: *Parser, tok: *Token) Allocator.Error!Next {
         },
         .chars => |c| if (c.class == .whitespace) return .done,
         .start_tag => |*t| if (t.tag == .html) {
-            const html = try self.createElement(.html, t.name, t.attributes);
+            const html = try self.createElement(.html, t.name, t.tag, t.attributes);
             try self.insertElement(html, root);
             try self.open.append(self.gpa, html);
             self.mode = .before_head;
@@ -520,7 +521,7 @@ fn beforeHtml(self: *Parser, tok: *Token) Allocator.Error!Next {
         },
         .eof => {},
     }
-    const html = try self.createElement(.html, "html", &.{});
+    const html = try self.createElement(.html, "html", .html, &.{});
     try self.insertElement(html, root);
     try self.open.append(self.gpa, html);
     self.mode = .before_head;
@@ -1608,7 +1609,10 @@ fn breakOut(self: *Parser, tok: *Token) Allocator.Error!Next {
 fn foreignStartTag(self: *Parser, t: *TagToken) Allocator.Error!void {
     const namespace = self.el(self.adjustedCurrent()).namespace;
     if (namespace == .svg) {
-        if (svg_tag_names.get(t.name)) |name| t.name = name;
+        if (svg_tag_names.get(t.name)) |name| {
+            t.name = name;
+            t.tag = .fromName(name);
+        }
     }
     adjustAttributes(namespace, t.attributes);
     _ = try self.insertForeign(t, namespace);
@@ -1741,19 +1745,32 @@ fn adjust(self: *const Parser, place: Location) Location {
     return place;
 }
 
+/// `tag` is `Tag.fromName(name)`, which the caller has already looked up.
 fn createElement(
     self: *Parser,
     namespace: Namespace,
     name: []const u8,
+    tag: Tag,
     attributes: []const Attribute,
 ) Allocator.Error!Node.Index {
-    const tag: Tag = .fromName(name);
-    const copies = try self.doc.arena.allocator().alloc(Attribute, attributes.len);
-    for (attributes, copies) |a, *copy| copy.* = .{
-        .namespace = a.namespace,
-        .name = try self.doc.dupe(a.name),
-        .value = try self.doc.dupe(a.value),
-    };
+    assert(tag == Tag.fromName(name));
+    const arena = self.doc.arena.allocator();
+    const copies = try arena.alloc(Attribute, attributes.len);
+    // All of the attributes' strings in one allocation, since an arena call
+    // costs more than copying a typical attribute.
+    var len: usize = 0;
+    for (attributes) |a| len += a.name.len + a.value.len;
+    var bytes = try arena.alloc(u8, len);
+    for (attributes, copies) |a, *copy| {
+        @memcpy(bytes[0..a.name.len], a.name);
+        @memcpy(bytes[a.name.len..][0..a.value.len], a.value);
+        copy.* = .{
+            .namespace = a.namespace,
+            .name = bytes[0..a.name.len],
+            .value = bytes[a.name.len..][0..a.value.len],
+        };
+        bytes = bytes[a.name.len + a.value.len ..];
+    }
     const contents = if (namespace == .html and tag == .template) try self.doc.create(.fragment) else .none;
     return self.doc.create(.{ .element = .{
         .namespace = namespace,
@@ -1781,7 +1798,7 @@ fn insertElement(self: *Parser, element: Node.Index, place: Location) Allocator.
 }
 
 fn insertForeign(self: *Parser, t: *const TagToken, namespace: Namespace) Allocator.Error!Node.Index {
-    const element = try self.createElement(namespace, t.name, t.attributes);
+    const element = try self.createElement(namespace, t.name, t.tag, t.attributes);
     try self.insertElement(element, self.appropriatePlace(.none));
     try self.open.append(self.gpa, element);
     return element;
