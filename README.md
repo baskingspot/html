@@ -81,7 +81,7 @@ html builds with Zig 0.16 only.
 just ci
 ```
 
-`nix develop` provides the toolchain. `just` lists the recipes, and `just ci` runs what CI runs.
+`nix develop` provides the toolchain. `just` lists the recipes, and `just ci` runs what CI runs. `just bench-compare` times this parser against Go's x/net/html and Rust's html5ever on a pinned corpus of real pages; `bench/README.md` has the method.
 
 ## License
 

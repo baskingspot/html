@@ -25,6 +25,10 @@ Zig 0.16 only. The flake is the tool contract, from `baskingspot/nix`: `nix deve
 
 `test/wpt-tree-construction/` is vendored from web-platform-tests' `html/syntax/parsing/resources`, the same way, and `test/tree.zig` runs it with its own `known_divergences`. The tree construction tests live there now, not in html5lib-tests. The `scripted_*.dat` files are left out: they need a script engine.
 
+## Benchmarks
+
+`bench/` compares this parser with Go's x/net/html and Rust's scraper (html5ever); `bench/README.md` is the method. Local numbers are for iterating, never claims. Keep the arms equivalent: `just bench-compare` refuses to be read until `check` shows the same trees, and a change to what one arm times changes the others or the README's table.
+
 ## Rules
 
 - Commit messages are one line, `area: summary`, and every commit is signed. Do not rewrite pushed history.

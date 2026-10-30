@@ -25,3 +25,7 @@ The parsing section is the reference for `src/Tokenizer.zig` and `src/Parser.zig
 - Pinned commit: `70dae60789ef6220d9b4e60c92c5b2107b4e2b93`
 
 `test/wpt-tree-construction/` holds the `.dat` files and `README.md` of `html/syntax/parsing/resources`, vendored as data, except the `scripted_*.dat` files, which need a script engine. `test/tree.zig` reads them at test time. Like the tokenizer corpus, they are not compiled into the library and not in a `zig fetch` tarball.
+
+## Benchmark corpus and competitors
+
+`bench/` downloads, and does not ship, the pages it parses and the parsers it compares against. The pages are Wayback Machine captures listed in `bench/corpus/sources.tsv`; their copyright stays with their sites, and only their SHA-256 sums are committed. The competitors are `golang.org/x/net` (BSD-3-Clause), pinned in `bench/go/go.sum`, and `scraper` (ISC) with html5ever (MIT or Apache-2.0), pinned in `bench/rust/Cargo.lock`.

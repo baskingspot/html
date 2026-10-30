@@ -41,4 +41,30 @@ pub fn build(b: *std.Build) void {
         run_corpus_tests.addArg(b.fmt("--seed=0x{x}", .{b.graph.random_seed}));
         test_step.dependOn(&run_corpus_tests.step);
     }
+
+    // The Zig arm of the parse benchmarks (bench/README.md). It is always
+    // ReleaseFast, and it reads `bench/corpus-gen` from the build root.
+    const bench_exe = b.addExecutable(.{
+        .name = "parse-zig",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bench/zig/parse.zig"),
+            .target = target,
+            .optimize = .ReleaseFast,
+            .imports = &.{
+                .{ .name = "html", .module = b.createModule(.{
+                    .root_source_file = b.path("src/root.zig"),
+                    .target = target,
+                    .optimize = .ReleaseFast,
+                }) },
+                .{ .name = "testingx", .module = testingx.module("testingx") },
+            },
+        }),
+    });
+    const run_bench = b.addRunArtifact(bench_exe);
+    run_bench.setCwd(b.path("."));
+    if (b.args) |args| run_bench.addArgs(args);
+    b.step("bench", "Run the parse benchmarks (ReleaseFast); the numbers are not claims")
+        .dependOn(&run_bench.step);
+    b.step("bench-install", "Install the parse benchmark driver (zig-out/bin/parse-zig)")
+        .dependOn(&b.addInstallArtifact(bench_exe, .{}).step);
 }

@@ -28,6 +28,18 @@
               docs
               zig
             ];
+
+            packages = with pkgs; [
+              # `just bench-compare` (bench/README.md): go and the rust
+              # toolchain build the x/net/html and html5ever arms, and
+              # nixpkgs' goperf is golang.org/x/perf, which supplies benchstat,
+              # and util-linux supplies taskset, which pins every arm to one core.
+              go
+              cargo
+              rustc
+              goperf
+              util-linux
+            ];
           };
         };
     };

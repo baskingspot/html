@@ -10,3 +10,8 @@ docs/data/
 docs/public/
 docs/themes/
 docs/content/changelog.md
+
+# The parse benchmarks' fetched corpus and the Rust arm's build output
+# (bench/README.md).
+bench/corpus-gen/
+bench/rust/target/

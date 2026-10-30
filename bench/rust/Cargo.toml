@@ -1,0 +1,12 @@
+[package]
+name = "parse-rust"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+scraper = "0.29"
+
+[profile.release]
+codegen-units = 1
+lto = true

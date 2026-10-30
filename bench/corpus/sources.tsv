@@ -1,0 +1,8 @@
+# The parse benchmark corpus: name, then the URL `just bench-corpus` fetches
+# it from. Each URL is a Wayback Machine `id_` capture, which serves the page's
+# original bytes and never changes. SHA256SUMS pins each file.
+github-zig.html	https://web.archive.org/web/20260602051624id_/https://github.com/ziglang/zig
+hackernews.html	https://web.archive.org/web/20260601014559id_/https://news.ycombinator.com/
+mdn-elements.html	https://web.archive.org/web/20260531233524id_/https://developer.mozilla.org/en-US/docs/Web/HTML/Element
+whatwg-spec.html	https://web.archive.org/web/20260601143911id_/https://html.spec.whatwg.org/
+wikipedia-html.html	https://web.archive.org/web/20260601011227id_/https://en.wikipedia.org/wiki/HTML
