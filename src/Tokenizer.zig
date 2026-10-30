@@ -519,6 +519,69 @@ fn advance(self: *Tokenizer, c: Char) void {
     }
 }
 
+/// The ASCII bytes a run may hold: tab, LF, and printable ASCII, but `stops`.
+fn runTable(comptime stops: []const u8) [0x80]bool {
+    var table: [0x80]bool = @splat(false);
+    table['\t'] = true;
+    table['\n'] = true;
+    for (0x20..0x7F) |b| table[b] = true;
+    for (stops) |b| table[b] = false;
+    return table;
+}
+
+/// Consume the longest run of characters the calling state handles one by
+/// one in the same way, except the bytes in `stops`, and return its bytes.
+/// A run holds no character that `peek` changes or reports an error for: no
+/// CR, NULL, control, noncharacter, or invalid or incomplete UTF-8. So taking
+/// a run is the same as stepping through it, only faster.
+fn takeRun(self: *Tokenizer, comptime stops: []const u8) []const u8 {
+    const table = comptime runTable(stops);
+    const bytes = self.input.items[self.pos..];
+    var i: usize = 0;
+    var line = self.line;
+    var column = self.column;
+    while (i < bytes.len) {
+        const b = bytes[i];
+        if (b < 0x80) {
+            if (!table[b]) break;
+            if (b == '\n') {
+                line +|= 1;
+                column = 1;
+            } else {
+                column +|= 1;
+            }
+            i += 1;
+        } else {
+            const n = ordinaryUtf8(bytes[i..]) orelse break;
+            column +|= if (n == 4) 2 else 1;
+            i += n;
+        }
+    }
+    self.pos += @intCast(i);
+    self.line = line;
+    self.column = column;
+    return bytes[0..i];
+}
+
+/// The length of the complete, valid UTF-8 sequence starting `bytes`, or
+/// null when it is not one or encodes a C1 control or a noncharacter.
+fn ordinaryUtf8(bytes: []const u8) ?u8 {
+    const len: u8 = switch (bytes[0]) {
+        0xC2...0xDF => 2,
+        0xE0...0xEF => 3,
+        0xF0...0xF4 => 4,
+        else => return null,
+    };
+    const c = decodeUtf8(bytes, .open) orelse return null;
+    if (c.len != len or c.cp <= 0x9F or isNoncharacter(c.cp)) return null;
+    return len;
+}
+
+/// Lowercase the ASCII letters in `list` from `start` on, as names need.
+fn lowercaseFrom(list: *ArrayList(u8), start: usize) void {
+    for (list.items[start..]) |*b| b.* = ascii.toLower(b.*);
+}
+
 /// Consume `n` ASCII bytes a lookahead matched. None of them is a newline.
 fn advanceAscii(self: *Tokenizer, n: u32) void {
     self.pos += n;
@@ -556,7 +619,7 @@ fn emitChar(self: *Tokenizer, cp: u21) Allocator.Error!void {
     try appendCodepoint(self.gpa, &self.text, cp);
 }
 
-fn emitAscii(self: *Tokenizer, bytes: []const u8) Allocator.Error!void {
+fn emitBytes(self: *Tokenizer, bytes: []const u8) Allocator.Error!void {
     try self.text.appendSlice(self.gpa, bytes);
 }
 
@@ -754,6 +817,11 @@ fn step(self: *Tokenizer) Allocator.Error!Progress {
 }
 
 fn dataState(self: *Tokenizer) Allocator.Error!Progress {
+    const run = self.takeRun("&<");
+    if (run.len != 0) {
+        try self.emitBytes(run);
+        return .more;
+    }
     const c = self.peek() orelse return .need_input;
     switch (c.cp) {
         '&' => {
@@ -777,6 +845,15 @@ fn dataState(self: *Tokenizer) Allocator.Error!Progress {
 
 /// The RCDATA, RAWTEXT, script data, and PLAINTEXT states.
 fn textState(self: *Tokenizer, kind: enum { rcdata, rawtext, script_data, plaintext }) Allocator.Error!Progress {
+    const run = switch (kind) {
+        .rcdata => self.takeRun("&<"),
+        .rawtext, .script_data => self.takeRun("<"),
+        .plaintext => self.takeRun(""),
+    };
+    if (run.len != 0) {
+        try self.emitBytes(run);
+        return .more;
+    }
     const c = self.peek() orelse return .need_input;
     if (c.cp == eof) {
         self.emitEof();
@@ -817,7 +894,7 @@ fn tagOpen(self: *Tokenizer) Allocator.Error!Progress {
         },
         eof => {
             self.fail(.eof_before_tag_name);
-            try self.emitAscii("<");
+            try self.emitBytes("<");
             self.emitEof();
         },
         else => if (isAsciiAlpha(c.cp)) {
@@ -825,7 +902,7 @@ fn tagOpen(self: *Tokenizer) Allocator.Error!Progress {
             self.state = .tag_name;
         } else {
             self.fail(.invalid_first_character_of_tag_name);
-            try self.emitAscii("<");
+            try self.emitBytes("<");
             self.state = .data;
         },
     }
@@ -843,7 +920,7 @@ fn endTagOpen(self: *Tokenizer) Allocator.Error!Progress {
         self.state = .data;
     } else if (c.cp == eof) {
         self.fail(.eof_before_tag_name);
-        try self.emitAscii("</");
+        try self.emitBytes("</");
         self.emitEof();
     } else {
         self.fail(.invalid_first_character_of_tag_name);
@@ -854,6 +931,13 @@ fn endTagOpen(self: *Tokenizer) Allocator.Error!Progress {
 }
 
 fn tagNameState(self: *Tokenizer) Allocator.Error!Progress {
+    const run = self.takeRun("\t\n />");
+    if (run.len != 0) {
+        const start = self.tag_name.items.len;
+        try self.tag_name.appendSlice(self.gpa, run);
+        lowercaseFrom(&self.tag_name, start);
+        return .more;
+    }
     const c = self.peek() orelse return .need_input;
     switch (c.cp) {
         '\t', '\n', 0x0C, ' ' => {
@@ -890,9 +974,9 @@ fn textLessThan(self: *Tokenizer, raw: Raw) Allocator.Error!Progress {
     } else if (c.cp == '!' and raw == .script_data) {
         self.advance(c);
         self.state = .script_data_escape_start;
-        try self.emitAscii("<!");
+        try self.emitBytes("<!");
     } else {
-        try self.emitAscii("<");
+        try self.emitBytes("<");
         self.state = raw.state();
     }
     return .more;
@@ -904,7 +988,7 @@ fn textEndTagOpen(self: *Tokenizer, raw: Raw) Allocator.Error!Progress {
         self.newTag(.end);
         self.state = .{ .text_end_tag_name = raw };
     } else {
-        try self.emitAscii("</");
+        try self.emitBytes("</");
         self.state = raw.state();
     }
     return .more;
@@ -936,8 +1020,8 @@ fn textEndTagName(self: *Tokenizer, raw: Raw) Allocator.Error!Progress {
             return .more;
         },
     }
-    try self.emitAscii("</");
-    try self.emitAscii(self.temp.items);
+    try self.emitBytes("</");
+    try self.emitBytes(self.temp.items);
     self.state = raw.state();
     return .more;
 }
@@ -954,7 +1038,7 @@ fn scriptEscaped(self: *Tokenizer) Allocator.Error!Progress {
                 return .more;
             }
             self.advance(c);
-            try self.emitAscii("-");
+            try self.emitBytes("-");
             self.state = if (state == .script_data_escape_start)
                 .script_data_escape_start_dash
             else
@@ -967,7 +1051,7 @@ fn scriptEscaped(self: *Tokenizer) Allocator.Error!Progress {
     switch (c.cp) {
         '-' => {
             self.advance(c);
-            try self.emitAscii("-");
+            try self.emitBytes("-");
             self.state = switch (state) {
                 .script_data_escaped => .script_data_escaped_dash,
                 else => .script_data_escaped_dash_dash,
@@ -979,7 +1063,7 @@ fn scriptEscaped(self: *Tokenizer) Allocator.Error!Progress {
         },
         '>' => {
             self.advance(c);
-            try self.emitAscii(">");
+            try self.emitBytes(">");
             if (state == .script_data_escaped_dash_dash) self.state = .script_data else {
                 self.state = .script_data_escaped;
             }
@@ -1003,10 +1087,10 @@ fn scriptEscapedLessThan(self: *Tokenizer, c: Char) Allocator.Error!Progress {
         self.state = .{ .text_end_tag_open = .script_data_escaped };
     } else if (isAsciiAlpha(c.cp)) {
         self.temp.clearRetainingCapacity();
-        try self.emitAscii("<");
+        try self.emitBytes("<");
         self.state = .script_data_double_escape_start;
     } else {
-        try self.emitAscii("<");
+        try self.emitBytes("<");
         self.state = .script_data_escaped;
     }
     return .more;
@@ -1052,7 +1136,7 @@ fn scriptDoubleEscaped(self: *Tokenizer) Allocator.Error!Progress {
         if (c.cp == '/') {
             self.temp.clearRetainingCapacity();
             self.advance(c);
-            try self.emitAscii("/");
+            try self.emitBytes("/");
             self.state = .script_data_double_escape_end;
         } else {
             self.state = .script_data_double_escaped;
@@ -1062,7 +1146,7 @@ fn scriptDoubleEscaped(self: *Tokenizer) Allocator.Error!Progress {
     switch (c.cp) {
         '-' => {
             self.advance(c);
-            try self.emitAscii("-");
+            try self.emitBytes("-");
             self.state = switch (state) {
                 .script_data_double_escaped => .script_data_double_escaped_dash,
                 else => .script_data_double_escaped_dash_dash,
@@ -1070,12 +1154,12 @@ fn scriptDoubleEscaped(self: *Tokenizer) Allocator.Error!Progress {
         },
         '<' => {
             self.advance(c);
-            try self.emitAscii("<");
+            try self.emitBytes("<");
             self.state = .script_data_double_escaped_less_than;
         },
         '>' => {
             self.advance(c);
-            try self.emitAscii(">");
+            try self.emitBytes(">");
             self.state = if (state == .script_data_double_escaped_dash_dash)
                 .script_data
             else
@@ -1114,6 +1198,13 @@ fn beforeAttributeName(self: *Tokenizer) Allocator.Error!Progress {
 }
 
 fn attributeName(self: *Tokenizer) Allocator.Error!Progress {
+    const run = self.takeRun("\t\n />=\"'<");
+    if (run.len != 0) {
+        const start = self.attribute_bytes.items.len;
+        try self.attribute_bytes.appendSlice(self.gpa, run);
+        lowercaseFrom(&self.attribute_bytes, start);
+        return .more;
+    }
     const c = self.peek() orelse return .need_input;
     switch (c.cp) {
         '\t', '\n', 0x0C, ' ', '/', '>', eof => {
@@ -1184,6 +1275,11 @@ fn beforeAttributeValue(self: *Tokenizer) Allocator.Error!Progress {
 }
 
 fn attributeValueQuoted(self: *Tokenizer, quote: u8) Allocator.Error!Progress {
+    const run = if (quote == '"') self.takeRun("\"&") else self.takeRun("'&");
+    if (run.len != 0) {
+        try self.appendAttributeValueBytes(run);
+        return .more;
+    }
     const c = self.peek() orelse return .need_input;
     if (c.cp == quote) {
         self.advance(c);
@@ -1209,6 +1305,11 @@ fn attributeValueQuoted(self: *Tokenizer, quote: u8) Allocator.Error!Progress {
 }
 
 fn attributeValueUnquoted(self: *Tokenizer) Allocator.Error!Progress {
+    const run = self.takeRun("\t\n &>\"'<=`");
+    if (run.len != 0) {
+        try self.appendAttributeValueBytes(run);
+        return .more;
+    }
     const c = self.peek() orelse return .need_input;
     switch (c.cp) {
         '\t', '\n', 0x0C, ' ' => {
@@ -1712,17 +1813,17 @@ fn cdataSection(self: *Tokenizer) Allocator.Error!Progress {
             },
         },
         .cdata_section_bracket => if (c.cp == ']') self.consumeTo(c, .cdata_section_end) else {
-            try self.emitAscii("]");
+            try self.emitBytes("]");
             self.state = .cdata_section;
         },
         .cdata_section_end => switch (c.cp) {
             ']' => {
-                try self.emitAscii("]");
+                try self.emitBytes("]");
                 self.advance(c);
             },
             '>' => self.consumeTo(c, .data),
             else => {
-                try self.emitAscii("]]");
+                try self.emitBytes("]]");
                 self.state = .cdata_section;
             },
         },
@@ -1823,7 +1924,7 @@ fn flushCharacterReference(self: *Tokenizer) Allocator.Error!void {
     if (self.inAttribute()) {
         try self.appendAttributeValueBytes(self.temp.items);
     } else {
-        try self.emitAscii(self.temp.items);
+        try self.emitBytes(self.temp.items);
     }
 }
 
