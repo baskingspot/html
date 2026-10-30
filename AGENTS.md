@@ -8,7 +8,7 @@ HTML in Zig, parsed the way the WHATWG HTML standard says: the tokenizer (§13.2
 
 ## Environment
 
-Zig 0.16 only. The flake is the tool contract, from `baskingspot/nix`: `nix develop` provides Zig, `ziglint`, the base tools, and the benchmarks' Go and Rust toolchains, and nothing comes from the system PATH. The justfile is the command interface: `just test`, `just lint`, `just ci`. Run `just fmt` before you commit.
+Zig 0.16 only. The flake is the tool contract, from `baskingspot/nix`: `nix develop` provides Zig, `ziglint`, the base tools, the docs site tools, and the benchmarks' Go and Rust toolchains, and nothing comes from the system PATH. The justfile is the command interface: `just test`, `just lint`, `just ci`. Run `just fmt` before you commit.
 
 ## Design
 
@@ -31,7 +31,7 @@ Zig 0.16 only. The flake is the tool contract, from `baskingspot/nix`: `nix deve
 
 ## Agent notes
 
-Docs split by reader. `README.md`, `CHANGELOG.md`, `THIRD_PARTY.md`, and `bench/README.md` are for a person deciding whether and how to use the package. Agent material goes in `docs/slop/`: design notes such as `docs/slop/allocation.md`, and measurements in `docs/slop/results/<topic>-<yyyymmdd>.md`, with the method, the raw benchstat output, and what was tried and dropped. `AGENTS.md` and code comments may link `docs/slop/`; no human document links or names it.
+Docs split by reader. `README.md`, `CHANGELOG.md`, `THIRD_PARTY.md`, `bench/README.md`, and the guide in `docs/content/` are for a person deciding whether and how to use the package. Agent material goes in `docs/slop/`: design notes such as `docs/slop/allocation.md`, and measurements in `docs/slop/results/<topic>-<yyyymmdd>.md`, with the method, the raw benchstat output, and what was tried and dropped. `AGENTS.md` and code comments may link `docs/slop/`; no human document links or names it.
 
 ## Rules
 

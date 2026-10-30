@@ -1,0 +1,23 @@
+# The html guide, served at baskingspot.dev/html/. The theme and the site build
+# come from baskingspot-docs; the router in baskingspot/site serves /html/...
+base_url = "https://baskingspot.dev/html"
+theme = "baskingspot"
+title = "html"
+description = "HTML in Zig, the way the WHATWG HTML standard parses it."
+
+generate_feeds = false
+build_search_index = false
+
+[markdown]
+insert_anchor_links = "heading"
+
+[markdown.highlighting]
+# An unknown fence language is a build error, not an unhighlighted block.
+error_on_missing_language = true
+light_theme = "github-light"
+dark_theme = "github-dark"
+
+[extra]
+repo = "baskingspot/html"
+api = true
+third_party = true

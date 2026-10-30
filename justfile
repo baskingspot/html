@@ -1,7 +1,7 @@
 # html: HTML in Zig, the way the WHATWG HTML standard parses it. `just --list`
 # shows the recipes. AGENTS.md holds the working conventions.
 
-markdown := "README.md AGENTS.md CHANGELOG.md THIRD_PARTY.md bench/README.md docs/slop .github"
+markdown := "README.md AGENTS.md CHANGELOG.md THIRD_PARTY.md bench/README.md docs/content docs/config.toml docs/slop .github"
 
 [private]
 default:
@@ -17,7 +17,7 @@ test:
 [group("lint")]
 lint:
     ziglint
-    zig fmt --check src test bench build.zig build.zig.zon
+    zig fmt --check src docs/examples test bench build.zig build.zig.zon
     nix fmt -- --ci
     oxfmt --check {{ markdown }}
     actionlint
@@ -27,7 +27,7 @@ lint:
 [doc("Format everything lint checks")]
 [group("lint")]
 fmt:
-    zig fmt src test bench build.zig build.zig.zon
+    zig fmt src docs/examples test bench build.zig build.zig.zon
     nix fmt
     oxfmt {{ markdown }}
     just --fmt
@@ -38,9 +38,30 @@ entities:
     curl -sSfL https://html.spec.whatwg.org/entities.json -o .zig-cache/entities.json
     python3 tools/entities.py .zig-cache/entities.json > src/entities.zig
 
-[doc("Everything CI runs: the tests and lint")]
+[doc("Everything CI runs: the tests, lint, and the site build")]
 [group("ci")]
-ci: test lint
+ci: test lint doc
+
+[doc("Build the site into zig-out/site/html/: the guide (Zola, from docs/) and the API reference (docgen JSON, rendered by the theme's api.html) under api/. The router in baskingspot/site serves /html/... from it")]
+[group("docs")]
+doc: api
+    baskingspot-docs build html
+
+[doc("Edit the guide with live reload (http://127.0.0.1:1111), API reference included")]
+[group("docs")]
+guide: api
+    baskingspot-docs serve html
+
+# The API reference data. docgen comes from the baskingspot flake's docs shell,
+# so this is not a Zig build dependency.
+[private]
+api:
+    docgen --root src/root.zig --title html --repo-url https://github.com/baskingspot/html --rev main --format json --out docs/data
+
+[doc("Deploy the rendered docs to Cloudflare as an assets-only Worker (config in wrangler.jsonc). Needs CLOUDFLARE_API_TOKEN in the environment, plus CLOUDFLARE_ACCOUNT_ID if the token can see more than one account")]
+[group("docs")]
+doc-deploy: doc
+    wrangler deploy
 
 [doc("Fetch and generate the parse benchmark corpus in bench/corpus-gen/, and verify it against bench/corpus/SHA256SUMS")]
 [group("bench")]
