@@ -7,6 +7,7 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const mem = std.mem;
+const testing = std.testing;
 const Allocator = mem.Allocator;
 const ArenaAllocator = std.heap.ArenaAllocator;
 const ArrayList = std.ArrayList;
@@ -380,7 +381,7 @@ pub fn isInclusiveAncestor(doc: *const Document, ancestor: Node.Index, descendan
 }
 
 test "insertBefore and remove keep the sibling links consistent" {
-    var doc: Document = try .init(std.testing.allocator, .document);
+    var doc: Document = try .init(testing.allocator, .document);
     defer doc.deinit();
     const a = try doc.create(.{ .comment = "a" });
     const b = try doc.create(.{ .comment = "b" });
@@ -395,8 +396,8 @@ test "insertBefore and remove keep the sibling links consistent" {
     var it = doc.children(.root);
     var n: u32 = 0;
     while (it.next()) |child| : (n += 1) order[n] = child;
-    try std.testing.expectEqual(3, n);
-    try std.testing.expectEqualSlices(Node.Index, &.{ b, c, a }, &order);
-    try std.testing.expectEqual(c, doc.node(a).prev_sibling);
-    try std.testing.expectEqual(b, doc.node(.root).first_child);
+    try testing.expectEqual(3, n);
+    try testing.expectEqualSlices(Node.Index, &.{ b, c, a }, &order);
+    try testing.expectEqual(c, doc.node(a).prev_sibling);
+    try testing.expectEqual(b, doc.node(.root).first_child);
 }

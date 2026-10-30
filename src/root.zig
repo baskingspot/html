@@ -7,6 +7,7 @@
 //! None of them do I/O.
 
 const std = @import("std");
+const testing = std.testing;
 
 /// The HTML parser: tree construction, §13.2.6 of the standard.
 pub const Parser = @import("Parser.zig");
@@ -24,5 +25,5 @@ pub const ParseError = Tokenizer.ParseError;
 pub const ErrorCode = Tokenizer.ErrorCode;
 
 test {
-    std.testing.refAllDecls(@This());
+    testing.refAllDecls(@This());
 }

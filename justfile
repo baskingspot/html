@@ -13,10 +13,11 @@ test:
     zig build test --summary all
     zig build test -Doptimize=ReleaseSafe --summary all
 
-[doc("Lint Zig, Nix, Markdown, the workflows, and this justfile: ziglint, zig fmt, nix fmt, oxfmt, actionlint, zizmor, and just --fmt")]
+[doc("Lint Zig, Nix, Markdown, the workflows, and this justfile: ziglint, ast-grep (baskingspot-lint), zig fmt, nix fmt, oxfmt, actionlint, zizmor, and just --fmt")]
 [group("lint")]
 lint:
     ziglint
+    baskingspot-lint src
     zig fmt --check src docs/examples test bench build.zig build.zig.zon
     nix fmt -- --ci
     oxfmt --check {{ markdown }}
