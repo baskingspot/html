@@ -33,7 +33,8 @@ test "parse a document" {
             else => {},
         }
     }
-    try testing.expectEqualSlices([]const u8, &.{"html"}, names.items);
+    try testing.expectEqual(@as(usize, 1), names.items.len);
+    try testing.expectEqualStrings("html", names.items[0]);
     try testing.expect(find(&doc, .root, "head") != null);
     try testing.expect(find(&doc, .root, "b") != null);
 }
