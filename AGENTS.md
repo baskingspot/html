@@ -29,9 +29,13 @@ Zig 0.16 only. The flake is the tool contract, from `baskingspot/nix`: `nix deve
 
 `bench/` compares this parser with Go's x/net/html and Rust's scraper (html5ever); `bench/README.md` is the method. Local numbers are for iterating, never claims. Keep the arms equivalent: `just bench-compare` refuses to be read until `check` shows the same trees, and a change to what one arm times changes the others or the README's table.
 
+## Agent notes
+
+Docs split by reader. `README.md`, `CHANGELOG.md`, `THIRD_PARTY.md`, and `bench/README.md` are for a person deciding whether and how to use the package. Agent material goes in `docs/slop/`: design notes such as `docs/slop/allocation.md`, and measurements in `docs/slop/results/<topic>-<yyyymmdd>.md`, with the method, the raw benchstat output, and what was tried and dropped. `AGENTS.md` and code comments may link `docs/slop/`; no human document links or names it.
+
 ## Rules
 
-- Commit messages are one line, `area: summary`, and every commit is signed. Do not rewrite pushed history.
+- Commit messages are one line, `area: summary`, and every commit is signed. Do not rewrite pushed history. A change made for a measurement adds a short body that names its `docs/slop/results/` file and gives the headline number.
 - Gate commands on their exit codes, and claim only what you ran.
 - `just fmt` formats Zig, Nix, Markdown, and the justfile; `just lint` checks them and lints the workflows with actionlint and zizmor.
 - This repo's GitHub settings come from `baskingspot/.github`, with `just settings`. Do not change them by hand.

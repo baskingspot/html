@@ -1,7 +1,7 @@
 # html: HTML in Zig, the way the WHATWG HTML standard parses it. `just --list`
 # shows the recipes. AGENTS.md holds the working conventions.
 
-markdown := "README.md AGENTS.md CHANGELOG.md THIRD_PARTY.md bench/README.md .github"
+markdown := "README.md AGENTS.md CHANGELOG.md THIRD_PARTY.md bench/README.md docs/slop .github"
 
 [private]
 default:
