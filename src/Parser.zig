@@ -260,11 +260,9 @@ fn process(self: *Parser, token: Tokenizer.Token) Allocator.Error!void {
             var rest = text;
             if (skip == .newline and rest[0] == '\n') rest = rest[1..];
             while (rest.len != 0) {
-                const class = classOf(rest[0]);
-                var n: usize = 1;
-                while (n < rest.len and classOf(rest[n]) == class) n += 1;
-                try self.dispatch(.{ .chars = .{ .class = class, .data = rest[0..n] } });
-                rest = rest[n..];
+                const chars = self.nextChars(rest);
+                try self.dispatch(.{ .chars = chars });
+                rest = rest[chars.data.len..];
             }
         },
         .start_tag => |t| try self.dispatch(.{ .start_tag = try self.tagToken(t) }),
@@ -275,6 +273,26 @@ fn process(self: *Parser, token: Tokenizer.Token) Allocator.Error!void {
         .eof => try self.dispatch(.eof),
     }
     self.updateCdata();
+}
+
+/// The characters at the start of `text` that tree construction handles
+/// alike. "in body" and "text", and foreign content within them, treat
+/// whitespace and other characters the same but for the frameset-ok flag,
+/// and none of them switches the mode on a character. There a run reaches up
+/// to a NULL, and it is whitespace only when all of it is, so a page's text
+/// takes one dispatch instead of one per word.
+fn nextChars(self: *const Parser, text: []const u8) Chars {
+    const first = classOf(text[0]);
+    var class = first;
+    var n: usize = 1;
+    if (first != .null and (self.mode == .in_body or self.mode == .text)) {
+        while (n < text.len and text[n] != 0) : (n += 1) {
+            if (classOf(text[n]) == .other) class = .other;
+        }
+    } else {
+        while (n < text.len and classOf(text[n]) == first) n += 1;
+    }
+    return .{ .class = class, .data = text[0..n] };
 }
 
 fn classOf(byte: u8) CharClass {
