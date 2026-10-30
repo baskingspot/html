@@ -1831,8 +1831,11 @@ fn insertChars(self: *Parser, data: []const u8) Allocator.Error!void {
             else => {},
         }
     }
-    var t: ArrayList(u8) = .empty;
-    try t.appendSlice(arena, data);
+    // Exactly as long as the text: most text nodes never grow, and
+    // `appendSlice` on an empty list would reserve half again plus a cache
+    // line for each one.
+    var t: ArrayList(u8) = try .initCapacity(arena, data.len);
+    t.appendSliceAssumeCapacity(data);
     const node = try self.doc.create(.{ .text = t });
     self.doc.insertBefore(place.parent, node, place.before);
 }
