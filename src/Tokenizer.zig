@@ -488,6 +488,13 @@ fn peek(self: *Tokenizer) ?Char {
     if (bytes.len == 0) {
         return if (self.input_end == .open) null else .{ .cp = eof, .len = 0 };
     }
+    // Most characters a state peeks at are printable ASCII delimiters, which
+    // need no decoding and no input stream check. Leaving `checked` behind is
+    // safe: it only stops a character from being checked twice.
+    const first = bytes[0];
+    if ((first >= 0x20 and first < 0x7F) or first == '\t' or first == '\n') {
+        return .{ .cp = first, .len = 1 };
+    }
     var c = decodeUtf8(bytes, self.input_end) orelse return null;
     if (c.cp == '\r') {
         if (bytes.len == 1 and self.input_end == .open) return null;
