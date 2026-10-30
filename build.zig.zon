@@ -1,0 +1,20 @@
+.{
+    .name = .html,
+    .version = "0.0.0",
+    .fingerprint = 0x1879f8e5bb9d31d6, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .testingx = .{
+            .url = "https://baskingspot.dev/testingx/v0.2.0.tar.gz",
+            .hash = "testingx-0.2.0-ib95-5lNAwA8WZQH6Q6eDm2hgfC3ixFJuhkOrR8gcZAm",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+        "README.md",
+        "THIRD_PARTY.md",
+    },
+}
