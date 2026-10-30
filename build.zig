@@ -14,7 +14,10 @@ pub fn build(b: *std.Build) void {
 
     if (b.pkg_hash.len != 0) return;
 
-    const testingx = b.dependency("testingx", .{ .target = target });
+    // Every step below needs testingx, which is lazy so a consumer never
+    // fetches it. On the first configure pass it is not fetched yet, and the
+    // build runner fetches it and reruns this script.
+    const testingx = b.lazyDependency("testingx", .{ .target = target }) orelse return;
     const runner: std.Build.Step.Compile.TestRunner = .{
         .path = testingx.path("src/runner.zig"),
         .mode = .simple,

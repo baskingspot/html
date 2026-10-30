@@ -1,6 +1,8 @@
 # html: HTML in Zig, the way the WHATWG HTML standard parses it. `just --list`
 # shows the recipes. AGENTS.md holds the working conventions.
 
+markdown := "README.md AGENTS.md CHANGELOG.md THIRD_PARTY.md bench/README.md .github"
+
 [private]
 default:
     @just --list
@@ -11,17 +13,23 @@ test:
     zig build test --summary all
     zig build test -Doptimize=ReleaseSafe --summary all
 
-[doc("Lint Zig and this justfile: ziglint, zig fmt, and just --fmt")]
+[doc("Lint Zig, Nix, Markdown, the workflows, and this justfile: ziglint, zig fmt, nix fmt, oxfmt, actionlint, zizmor, and just --fmt")]
 [group("lint")]
 lint:
     ziglint
     zig fmt --check src test bench build.zig build.zig.zon
+    nix fmt -- --ci
+    oxfmt --check {{ markdown }}
+    actionlint
+    zizmor .
     just --fmt --check
 
 [doc("Format everything lint checks")]
 [group("lint")]
 fmt:
     zig fmt src test bench build.zig build.zig.zon
+    nix fmt
+    oxfmt {{ markdown }}
     just --fmt
 
 [doc("Regenerate src/entities.zig from the standard's named character reference table")]

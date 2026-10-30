@@ -1,0 +1,3 @@
+.{
+    .paths = .{ "build.zig", "src", "test/tokenizer.zig", "test/tree.zig", "bench/zig" },
+}
