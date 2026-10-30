@@ -20,7 +20,7 @@ fn find(doc: *const html.Document, parent: html.Node.Index, name: []const u8) ?h
 
 test "parse a document" {
     const gpa = testing.allocator;
-    var doc = try html.parse(gpa, "<p class=intro>Hello, <b>world</b>", .{});
+    var doc = try html.parse(gpa, "<p class=intro>Hello, <b>world</b>", .init);
     defer doc.deinit();
 
     var names: std.ArrayList([]const u8) = .empty;
@@ -41,7 +41,7 @@ test "parse a document" {
 
 test "stream the input" {
     const gpa = testing.allocator;
-    var parser: html.Parser = try .init(gpa, .{});
+    var parser: html.Parser = try .init(gpa, .init);
     defer parser.deinit();
     try parser.feed("<ul><li>one<li>t");
     try parser.feed("wo</ul>");
@@ -56,7 +56,7 @@ test "stream the input" {
 
 test "parse a fragment" {
     const gpa = testing.allocator;
-    var fragment = try html.parseFragment(gpa, "<td>cell", .{ .name = "tr" }, .{});
+    var fragment = try html.parseFragment(gpa, "<td>cell", .init(.html, "tr"), .init);
     defer fragment.deinit();
 
     var children = fragment.children(.root);

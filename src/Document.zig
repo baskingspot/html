@@ -23,19 +23,36 @@ pub const Namespace = enum { html, svg, mathml };
 pub const AttributeNamespace = enum { none, xlink, xml, xmlns };
 
 pub const Attribute = struct {
-    namespace: AttributeNamespace = .none,
+    namespace: AttributeNamespace,
     /// The local name: `href` for `xlink:href` in the XLink namespace.
     name: []const u8,
     value: []const u8,
+
+    /// An attribute in no namespace, as every HTML attribute is.
+    pub fn init(name: []const u8, value: []const u8) Attribute {
+        return .{ .namespace = .none, .name = name, .value = value };
+    }
 };
 
 pub const Node = struct {
-    parent: Index = .none,
-    first_child: Index = .none,
-    last_child: Index = .none,
-    prev_sibling: Index = .none,
-    next_sibling: Index = .none,
+    parent: Index,
+    first_child: Index,
+    last_child: Index,
+    prev_sibling: Index,
+    next_sibling: Index,
     data: Data,
+
+    /// A node holding `data`, with no parent, children, or siblings.
+    pub fn init(data: Data) Node {
+        return .{
+            .parent = .none,
+            .first_child = .none,
+            .last_child = .none,
+            .prev_sibling = .none,
+            .next_sibling = .none,
+            .data = data,
+        };
+    }
 
     pub const Index = enum(u32) {
         /// The document, or the fragment for `Parser.initFragment`.
@@ -74,7 +91,19 @@ pub const Element = struct {
     tag: Tag,
     attributes: []const Attribute,
     /// The fragment holding a `template` element's contents, or `.none`.
-    template_contents: Node.Index = .none,
+    template_contents: Node.Index,
+
+    /// An element with no template contents: every element but an HTML
+    /// `template`.
+    pub fn init(namespace: Namespace, name: []const u8, tag: Tag, attributes: []const Attribute) Element {
+        return .{
+            .namespace = namespace,
+            .name = name,
+            .tag = tag,
+            .attributes = attributes,
+            .template_contents = .none,
+        };
+    }
 
     pub fn attribute(self: *const Element, name: []const u8) ?[]const u8 {
         for (self.attributes) |a| {
@@ -295,7 +324,7 @@ pub const Children = struct {
 pub fn create(doc: *Document, data: Node.Data) Allocator.Error!Node.Index {
     assert(doc.nodes.items.len < @intFromEnum(Node.Index.none));
     const index: Node.Index = @enumFromInt(doc.nodes.items.len);
-    try doc.nodes.append(doc.gpa, .{ .data = data });
+    try doc.nodes.append(doc.gpa, .init(data));
     return index;
 }
 

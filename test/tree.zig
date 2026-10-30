@@ -228,9 +228,9 @@ fn build(a: Allocator, case: Case, scripting: Parser.Scripting, feed: Feed) ![]c
 }
 
 fn parseContext(context: []const u8) Parser.Context {
-    if (mem.startsWith(u8, context, "svg ")) return .{ .namespace = .svg, .name = context[4..] };
-    if (mem.startsWith(u8, context, "math ")) return .{ .namespace = .mathml, .name = context[5..] };
-    return .{ .name = context };
+    if (mem.startsWith(u8, context, "svg ")) return .init(.svg, context[4..]);
+    if (mem.startsWith(u8, context, "math ")) return .init(.mathml, context[5..]);
+    return .init(.html, context);
 }
 
 fn dump(a: Allocator, doc: *const Document, parent: Node.Index, depth: u32, out: *ArrayList(u8)) !void {

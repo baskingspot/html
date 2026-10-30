@@ -31,16 +31,24 @@ const Parser = @This();
 pub const Options = struct {
     /// Whether to parse as if scripting were enabled, as it is in browsers.
     /// It decides one thing: whether `noscript` holds raw text or markup.
-    scripting: Scripting = .enabled,
+    scripting: Scripting,
+
+    /// Scripting enabled, as in a browser: the default.
+    pub const init: Options = .{ .scripting = .enabled };
 };
 
 pub const Scripting = enum { enabled, disabled };
 
 /// The element whose contents a fragment is parsed as, as for `innerHTML`.
 pub const Context = struct {
-    namespace: Namespace = .html,
+    namespace: Namespace,
     name: []const u8,
-    attributes: []const Attribute = &.{},
+    attributes: []const Attribute,
+
+    /// The context element in `namespace` with no attributes.
+    pub fn init(namespace: Namespace, name: []const u8) Context {
+        return .{ .namespace = namespace, .name = name, .attributes = &.{} };
+    }
 };
 
 const Mode = enum {
@@ -173,7 +181,7 @@ fn initRoot(gpa: Allocator, options: Options, root: enum { document, fragment })
     return .{
         .gpa = gpa,
         .options = options,
-        .tokenizer = .init(gpa, .{}),
+        .tokenizer = .init(gpa, .init),
         .doc = try .init(gpa, switch (root) {
             .document => .document,
             .fragment => .fragment,
@@ -308,7 +316,7 @@ fn tagToken(self: *Parser, t: Tokenizer.Tag) Allocator.Error!TagToken {
     self.attributes.clearRetainingCapacity();
     try self.attributes.ensureUnusedCapacity(self.gpa, t.attributes.len);
     for (t.attributes) |a| {
-        self.attributes.appendAssumeCapacity(.{ .name = a.name, .value = a.value });
+        self.attributes.appendAssumeCapacity(.init(a.name, a.value));
     }
     return .{
         .tag = .fromName(t.name),
@@ -855,7 +863,7 @@ fn mergeAttributes(self: *Parser, node: Node.Index, attributes: []const Attribut
     try merged.appendSlice(arena, e.attributes);
     for (attributes) |a| {
         if (e.attribute(a.name) != null) continue;
-        try merged.append(arena, .{ .name = try self.doc.dupe(a.name), .value = try self.doc.dupe(a.value) });
+        try merged.append(arena, .init(try self.doc.dupe(a.name), try self.doc.dupe(a.value)));
     }
     e.attributes = merged.items;
 }
@@ -1771,14 +1779,14 @@ fn createElement(
         };
         bytes = bytes[a.name.len + a.value.len ..];
     }
-    const contents = if (namespace == .html and tag == .template) try self.doc.create(.fragment) else .none;
-    return self.doc.create(.{ .element = .{
-        .namespace = namespace,
-        .name = if (tag == .other) try self.doc.dupe(name) else @tagName(tag),
-        .tag = tag,
-        .attributes = copies,
-        .template_contents = contents,
-    } });
+    var element = Element.init(
+        namespace,
+        if (tag == .other) try self.doc.dupe(name) else @tagName(tag),
+        tag,
+        copies,
+    );
+    if (namespace == .html and tag == .template) element.template_contents = try self.doc.create(.fragment);
+    return self.doc.create(.{ .element = element });
 }
 
 /// A new element for the token `node` was created for. The token's
@@ -2294,10 +2302,10 @@ const html401_public_prefixes = [_][]const u8{
 
 test "the input may be split anywhere" {
     const input = "<!DOCTYPE html><p>One<table><tr><td>Two</table><svg><circle/></svg>";
-    var whole = try parse(testing.allocator, input, .{});
+    var whole = try parse(testing.allocator, input, .init);
     defer whole.deinit();
 
-    var p: Parser = try .init(testing.allocator, .{});
+    var p: Parser = try .init(testing.allocator, .init);
     defer p.deinit();
     for (0..input.len) |i| try p.feed(input[i .. i + 1]);
     var split = try p.finish();

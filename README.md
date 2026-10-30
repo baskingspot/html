@@ -12,7 +12,7 @@ This project is incubating. It is unstable, its API will change, and it is not r
 std has no HTML parser, and the Zig ones that follow the standard are GPL or stop short of it. This package implements the standard's parsing algorithm itself and checks it against the suites browsers use. The tokenizer passes all 7,045 html5lib-tests tokenizer cases, including the 2026 addition of processing instructions. Tree construction builds the expected tree for 1,963 of the 1,967 cases in the web-platform-tests tree construction corpus, 3,706 runs across both scripting modes; the other 4 need DOM behavior beyond parsing (see Not implemented). Neither does I/O, and both take input in any split, so a document can stream through them from a socket.
 
 ```zig
-var doc = try html.parse(gpa, "<p class=intro>Hello, <b>world</b>", .{});
+var doc = try html.parse(gpa, "<p class=intro>Hello, <b>world</b>", .init);
 defer doc.deinit();
 ```
 

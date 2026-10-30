@@ -53,7 +53,7 @@ fn benchmarkParse(b: *testingx.B) !void {
 fn parseCurrent(b: *testingx.B) !void {
     const data = current;
     while (try b.loop()) {
-        var doc = try html.parse(gpa, data, .{});
+        var doc = try html.parse(gpa, data, .init);
         doc.deinit();
     }
     b.setBytes(@intCast(data.len));
@@ -61,7 +61,7 @@ fn parseCurrent(b: *testingx.B) !void {
 
 /// Every `.html` file in the corpus, sorted by name, which is the row name.
 fn load(io: Io, allocator: Allocator) ![]const Doc {
-    var dir = std.Io.Dir.cwd().openDir(io, corpus, .{ .iterate = true }) catch |err| {
+    var dir = Io.Dir.cwd().openDir(io, corpus, .{ .iterate = true }) catch |err| {
         std.debug.print("parse-zig: open {s}: {t} (run `just bench-corpus`)\n", .{ corpus, err });
         return err;
     };
@@ -112,11 +112,11 @@ const Counts = struct {
 
 fn check(io: Io, arena: Allocator) !void {
     var buf: [4096]u8 = undefined;
-    var stdout = std.Io.File.stdout().writerStreaming(io, &buf);
+    var stdout = Io.File.stdout().writerStreaming(io, &buf);
     const out = &stdout.interface;
     for (try load(io, arena)) |doc| {
         var counting: testingx.bench.CountingAllocator = .init(gpa);
-        var parsed = try html.parse(counting.allocator(), doc.data, .{});
+        var parsed = try html.parse(counting.allocator(), doc.data, .init);
         defer parsed.deinit();
         var c: Counts = .{};
         c.walk(&parsed, .root);
