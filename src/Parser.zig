@@ -28,13 +28,11 @@ const Tag = Document.Tag;
 
 const Parser = @This();
 
+// ast-grep-ignore: public-struct-field-default -- options bag: call sites override one knob
 pub const Options = struct {
     /// Whether to parse as if scripting were enabled, as it is in browsers.
     /// It decides one thing: whether `noscript` holds raw text or markup.
-    scripting: Scripting,
-
-    /// Scripting enabled, as in a browser: the default.
-    pub const init: Options = .{ .scripting = .enabled };
+    scripting: Scripting = .enabled,
 };
 
 pub const Scripting = enum { enabled, disabled };
@@ -181,7 +179,7 @@ fn initRoot(gpa: Allocator, options: Options, root: enum { document, fragment })
     return .{
         .gpa = gpa,
         .options = options,
-        .tokenizer = .init(gpa, .init),
+        .tokenizer = .init(gpa, .{}),
         .doc = try .init(gpa, switch (root) {
             .document => .document,
             .fragment => .fragment,
@@ -2302,10 +2300,10 @@ const html401_public_prefixes = [_][]const u8{
 
 test "the input may be split anywhere" {
     const input = "<!DOCTYPE html><p>One<table><tr><td>Two</table><svg><circle/></svg>";
-    var whole = try parse(testing.allocator, input, .init);
+    var whole = try parse(testing.allocator, input, .{});
     defer whole.deinit();
 
-    var p: Parser = try .init(testing.allocator, .init);
+    var p: Parser = try .init(testing.allocator, .{});
     defer p.deinit();
     for (0..input.len) |i| try p.feed(input[i .. i + 1]);
     var split = try p.finish();

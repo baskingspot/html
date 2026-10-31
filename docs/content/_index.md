@@ -46,7 +46,7 @@ const html = @import("html");
 ## Parse a document
 
 ```zig
-var doc = try html.parse(gpa, "<p class=intro>Hello, <b>world</b>", .init);
+var doc = try html.parse(gpa, "<p class=intro>Hello, <b>world</b>", .{});
 defer doc.deinit();
 walk(&doc, .root, 0);
 ```
@@ -74,7 +74,7 @@ That prints `html`, `head`, `body`, `p`, `Hello, `, `b`, and `world`: the parser
 A `Parser` takes bytes as they arrive, in any split, and returns the document at the end:
 
 ```zig
-var parser: html.Parser = try .init(gpa, .init);
+var parser: html.Parser = try .init(gpa, .{});
 defer parser.deinit();
 try parser.feed("<ul><li>one<li>t");
 try parser.feed("wo</ul>");
@@ -89,7 +89,7 @@ Splitting the input never changes a token or a tree. The corpus tests check that
 `parseFragment` parses markup as the contents of an element, the way `innerHTML` does:
 
 ```zig
-var fragment = try html.parseFragment(gpa, "<td>cell", .init(.html, "tr"), .init);
+var fragment = try html.parseFragment(gpa, "<td>cell", .init(.html, "tr"), .{});
 defer fragment.deinit();
 ```
 

@@ -13,4 +13,4 @@ All notable changes to html are recorded here. The format follows
 
 ### Changed
 
-- `Document.Attribute`, `Document.Node`, `Document.Element`, `Parser.Context`, `Parser.Options`, and `Tokenizer.Options`: fields no longer have defaults, so callers construct with `Attribute.init`, `Node.init`, `Element.init`, `Context.init`, or `Options.init` instead of `.{}` or a partial literal.
+- `Document.Attribute`, `Document.Node`, `Document.Element`, and `Parser.Context`: fields no longer have defaults, so callers construct with `Attribute.init`, `Node.init`, `Element.init`, or `Context.init` instead of `.{}` or a partial literal.

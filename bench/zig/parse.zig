@@ -53,7 +53,7 @@ fn benchmarkParse(b: *testingx.B) !void {
 fn parseCurrent(b: *testingx.B) !void {
     const data = current;
     while (try b.loop()) {
-        var doc = try html.parse(gpa, data, .init);
+        var doc = try html.parse(gpa, data, .{});
         doc.deinit();
     }
     b.setBytes(@intCast(data.len));
@@ -116,7 +116,7 @@ fn check(io: Io, arena: Allocator) !void {
     const out = &stdout.interface;
     for (try load(io, arena)) |doc| {
         var counting: testingx.bench.CountingAllocator = .init(gpa);
-        var parsed = try html.parse(counting.allocator(), doc.data, .init);
+        var parsed = try html.parse(counting.allocator(), doc.data, .{});
         defer parsed.deinit();
         var c: Counts = .{};
         c.walk(&parsed, .root);

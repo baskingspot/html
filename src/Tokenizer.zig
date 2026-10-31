@@ -126,13 +126,11 @@ pub const ErrorCode = enum {
     unknown_named_character_reference,
 };
 
+// ast-grep-ignore: public-struct-field-default -- options bag: call sites override one knob
 pub const Options = struct {
     /// Whether to record parse errors in `errors`. They never stop the
     /// tokenizer; the standard says how to recover from each one.
-    errors: ErrorMode,
-
-    /// Record no parse errors: the default.
-    pub const init: Options = .{ .errors = .ignore };
+    errors: ErrorMode = .ignore,
 };
 
 pub const ErrorMode = enum { ignore, collect };
@@ -2222,7 +2220,7 @@ fn windows1252(code: u32) u32 {
 }
 
 test "a token split across feeds waits for the rest" {
-    var tokenizer: Tokenizer = .init(testing.allocator, .init);
+    var tokenizer: Tokenizer = .init(testing.allocator, .{});
     defer tokenizer.deinit();
 
     try tokenizer.feed("Hi <di");
