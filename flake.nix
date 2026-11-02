@@ -11,8 +11,8 @@
   outputs =
     inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      # imports and inputsFrom below mirror each other, except the toolchain
-      # version: pick that once, in the import.
+      # imports and inputsFrom below mirror each other, including the
+      # toolchain version: pick that once, in the import.
       imports = with inputs.baskingspot.flakeModules; [
         base
         docs
@@ -23,10 +23,10 @@
         { pkgs, config, ... }:
         {
           devShells.default = pkgs.mkShell {
-            inputsFrom = with config.devShells; [
-              base
-              docs
-              zig
+            inputsFrom = [
+              config.devShells.base
+              config.devShells.docs
+              config.devShells."zig-0-16"
             ];
 
             packages = with pkgs; [
